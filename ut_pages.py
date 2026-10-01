@@ -175,6 +175,24 @@ chk("C ★樣本用到的每個型別頁面都認得", used <= known,
     "樣本=%s 未知=%s" % (",".join(sorted(used)), ",".join(sorted(used - known)) or "無"))
 chk("C 有 catch-all 分支", "rUnknown" in src)
 
+# ★★【C-2】**工具端真的會產出的型別**都要在頁面裡。
+#   這一軸不看合成樣本，而是直接掃 `tracewager.py` 裡所有 `_sh_blk("<型別>"` 的呼叫
+#   —— 合成樣本是我寫的，會跟著我的記憶漂；工具原碼不會。
+#   ⇒ 工具哪天加一個新型別而頁面沒跟上，這裡會紅（而不是上線後畫面出現一塊「未知區塊」）。
+TOOL = HERE.parent / "elk_find" / "tracewager.py"
+if TOOL.is_file():
+    emitted = set(re.findall(r'_sh_blk\(\s*"(\w+)"', TOOL.read_text(encoding="utf-8")))
+    chk("C-2 ★工具端產出的每個型別頁面都認得", bool(emitted) and emitted <= known,
+        "工具產出=%s 頁面不認得=%s"
+        % (",".join(sorted(emitted)), ",".join(sorted(emitted - known)) or "無"))
+    # 反向：頁面實作了而工具從不產出的型別 —— 不算失敗（為第二階段 tracelaunch 預留），
+    # 但要列出來，免得日後以為是死碼而刪掉。
+    spare = known - emitted
+    print("     ℹ️ 頁面實作但 tracewager 目前未用到：%s（為第二階段預留，勿刪）"
+          % (",".join(sorted(spare)) or "無"))
+else:
+    print("     ⚠️ 找不到 tracewager.py ⇒ C-2 整軸跳過（不是通過）")
+
 if args.no_node:
     print("\n（--no-node：略過 node 執行面）")
 else:
