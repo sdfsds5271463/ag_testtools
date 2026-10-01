@@ -1,1 +1,23 @@
-https://sdfsds5271463.github.io/ag_testtools/
+專案底層:
+	1. 這個專案是全部 AG 工具中，最特別的一個，它並不從本地執行，而是從 GithubPages 執行
+	2. 這個專案有獨立的 git，因此並不透過最外層 C:\allen\ag 的 git 版控
+	3. 這個專案已被授權，是破例的，可以主動 commit 並 push 到遠端，因為只有這樣才能完整測試
+
+技術底層:
+	1. 本專案 git 已連結到 https://github.com/sdfsds5271463/ag_testtools.git
+	2. 本專案 GithubPages 的網址為 https://sdfsds5271463.github.io/ag_testtools/
+	3. 本專案破例，可以主動 commit + push，實測 push 到遠端之後 40~50秒 GithubPages 會更新
+	4. 當專案被推送到 GithubPages，要注意 js 是否會被 Github CDN 快取住，可能會需要版本號或是動態 js 檔名
+	5. 非遠端測試，可以用網址 http://127.0.0.1:9527/AgGithubPages/ 進行測試 (本地開發時 apache 渲染純測試用)
+
+專案業務:
+	1. 本專案是靜態網站，不會主動檢索資訊，因此資訊都是使用 GET / HASH 參數帶在網址列之中，因此要注意參數長度要符合網址總長度
+	2. 範例網址可能是 (請評估哪個合適，並統一)
+		https://sdfsds5271463.github.io/ag_testtools/?data=%7B%22name%22%3A%22allen%22%2C%22age%22%3A30%7D
+		https://sdfsds5271463.github.io/ag_testtools/#data=%7B%22name%22%3A%22allen%22%2C%22age%22%3A30%7D
+	3. 這個網站不需要 pin 碼保護，當未攜帶參數或攜帶參數有錯誤的時候，不要給予任何錯誤提醒，而是直接顯示 "403 Forbidden"
+	4. 這個網站可以被多個 ag 工具使用，但它本身唯一功能只有格式化漂亮的顯示指定資料，所以該網站不會有任何 <a> 的超連結轉跳標籤
+	5. ag 工具通常最多就是產生 json 字串，並不一定有好看的介面；有了這個網站後，ag 工具就能選擇產生一段網址，透過這個網站做到漂亮渲染
+		使用場景上舉例，過往可能透過 tracelaunch.py 產生了追蹤啟動的結論字串，分享字串給其它人，人類閱讀上比較困難
+		當本網站完成後，tracelaunch.py 將可以選擇產生一段網址，分享網址給其它人，介面更漂亮，人類閱讀更容易
+

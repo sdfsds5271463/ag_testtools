@@ -1,1 +1,449 @@
-ag888ag888
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>AG Report</title>
+<style>
+/* ───────────────────────────────────────────────────────────────────────────
+   AgGithubPages —— AG 工具的分享型顯示層（單檔、零外部資源）
+   設計原則見 _test/github_pages/github_pages撰寫計畫.txt
+   ★ 本頁「笨」到不含任何 AG 業務詞彙：所有顯示文字都來自網址裡的承載。
+   ─────────────────────────────────────────────────────────────────────────── */
+:root{
+  --bg:#f6f7f9; --panel:#fff; --ink:#1b1f24; --dim:#5c6672; --line:#dfe3e8;
+  --ok:#1a7f45; --okbg:#e8f6ed; --warn:#8a5a00; --warnbg:#fdf3e0;
+  --danger:#b3261e; --dangerbg:#fdecea; --info:#1f5f9e; --infobg:#eaf2fb;
+  --code:#f2f4f7; --accent:#1f5f9e;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme=light]){
+    --bg:#15181c; --panel:#1d2126; --ink:#e7eaee; --dim:#9aa5b1; --line:#30363d;
+    --ok:#7ee2a8; --okbg:#14301f; --warn:#f0c674; --warnbg:#332814;
+    --danger:#ff9f98; --dangerbg:#3a1a17; --info:#8fc3f5; --infobg:#132537;
+    --code:#15191e; --accent:#8fc3f5;
+  }
+}
+:root[data-theme=dark]{
+  --bg:#15181c; --panel:#1d2126; --ink:#e7eaee; --dim:#9aa5b1; --line:#30363d;
+  --ok:#7ee2a8; --okbg:#14301f; --warn:#f0c674; --warnbg:#332814;
+  --danger:#ff9f98; --dangerbg:#3a1a17; --info:#8fc3f5; --infobg:#132537;
+  --code:#15191e; --accent:#8fc3f5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.65 -apple-system,"Segoe UI","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  overflow-wrap:break-word}
+#deny{display:none;padding:18vh 24px;text-align:center;color:var(--dim);
+  font:600 20px/1.5 ui-monospace,Menlo,Consolas,monospace}
+header{position:sticky;top:0;z-index:5;background:var(--panel);
+  border-bottom:1px solid var(--line);padding:12px 16px}
+.hrow{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+h1{margin:0;font-size:17px;letter-spacing:.3px}
+.sub{color:var(--dim);font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;
+  word-break:break-all}
+.tools{margin-left:auto;display:flex;gap:8px;align-items:center}
+button{font:13px inherit;color:var(--ink);background:var(--panel);
+  border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
+button:hover{border-color:var(--accent);color:var(--accent)}
+#q{font:13px inherit;color:var(--ink);background:var(--panel);
+  border:1px solid var(--line);border-radius:6px;padding:4px 9px;width:160px}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.badge{display:inline-flex;gap:6px;align-items:center;font-size:12px;
+  border:1px solid var(--line);border-radius:999px;padding:2px 10px}
+.badge b{font-weight:600}
+.badge.ok{background:var(--okbg);color:var(--ok);border-color:transparent}
+.badge.warn{background:var(--warnbg);color:var(--warn);border-color:transparent}
+.badge.danger{background:var(--dangerbg);color:var(--danger);border-color:transparent}
+.badge.info{background:var(--infobg);color:var(--info);border-color:transparent}
+main{max-width:1180px;margin:0 auto;padding:16px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  margin:0 0 14px;overflow:hidden}
+section>h2{margin:0;font-size:14px;padding:11px 14px;background:transparent;
+  border-bottom:1px solid var(--line);display:flex;gap:9px;align-items:center}
+section>h2 .chev{color:var(--dim);font-size:11px;width:9px;flex:none}
+section>h2{cursor:pointer;user-select:none}
+section.flat>h2{cursor:default}
+.body{padding:12px 14px}
+section.col .body{display:none}
+.note{color:var(--dim);font-size:13px;margin:0 0 10px}
+.warnbox{border-left:3px solid var(--warn);background:var(--warnbg);color:var(--warn);
+  padding:9px 12px;border-radius:0 6px 6px 0;margin:0 0 10px;font-size:13.5px;
+  white-space:pre-wrap}
+.banner{padding:11px 14px;margin:0 0 14px;border-radius:9px;font-size:13.5px;
+  white-space:pre-wrap;border:1px solid transparent}
+.banner.info{background:var(--infobg);color:var(--info)}
+.banner.warn{background:var(--warnbg);color:var(--warn)}
+.banner.danger{background:var(--dangerbg);color:var(--danger)}
+.banner.ok{background:var(--okbg);color:var(--ok)}
+dl{display:grid;grid-template-columns:minmax(90px,max-content) 1fr;gap:4px 14px;margin:0}
+dt{color:var(--dim);font-size:13px}
+dd{margin:0;word-break:break-word}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;font-size:13.5px;min-width:260px}
+th,td{border:1px solid var(--line);padding:5px 10px;text-align:left;vertical-align:top}
+th{background:var(--code);font-weight:600;color:var(--dim)}
+ul.pl{margin:0;padding-left:20px}
+ul.pl li{margin:3px 0}
+.ex{border:1px solid var(--line);border-radius:8px;margin:0 0 12px;overflow:hidden}
+.ex>.exh{padding:8px 12px;font-size:13px;display:flex;gap:9px;align-items:center;
+  border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+.ex.ok>.exh{background:var(--okbg);color:var(--ok)}
+.ex.danger>.exh{background:var(--dangerbg);color:var(--danger)}
+.ex.warn>.exh{background:var(--warnbg);color:var(--warn)}
+.ex.col>.exb{display:none}
+.exb{padding:10px 12px}
+.leg{font-size:11px;letter-spacing:.8px;color:var(--dim);margin:10px 0 5px;
+  text-transform:uppercase}
+.leg:first-child{margin-top:0}
+.line{font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;background:var(--code);
+  padding:7px 9px;border-radius:6px;word-break:break-all;margin:0 0 7px}
+pre{font:12.5px/1.55 ui-monospace,Menlo,Consolas,monospace;background:var(--code);
+  padding:9px 10px;border-radius:6px;margin:0;max-height:420px;overflow:auto;
+  white-space:pre-wrap;word-break:break-word}
+.unknown{border:1px dashed var(--warn);border-radius:8px;padding:10px 12px;margin:0 0 12px}
+.unknown>b{color:var(--warn);font-size:13px}
+.hide{display:none !important}
+mark{background:#ffe9a8;color:#3a2c00;padding:0 1px;border-radius:2px}
+footer{max-width:1180px;margin:0 auto;padding:4px 16px 40px;color:var(--dim);font-size:12px}
+</style>
+</head>
+<body>
+
+<div id="deny">403 Forbidden</div>
+<div id="app" class="hide">
+  <header>
+    <div class="hrow">
+      <h1 id="t"></h1>
+      <span class="sub" id="st"></span>
+      <span class="tools">
+        <input id="q" type="search" placeholder="過濾…" autocomplete="off">
+        <button id="xa" type="button">全展開</button>
+        <button id="xc" type="button">全收合</button>
+        <button id="th" type="button">☾</button>
+      </span>
+    </div>
+    <div class="badges" id="bd"></div>
+  </header>
+  <main id="m"></main>
+  <footer id="ft"></footer>
+</div>
+
+<script>
+'use strict';
+/* ═══════════════════════════════════════════════════════════════════════════
+   承載在 URL 的 **hash fragment**：#z1.<base64url(gzip(json))>
+     · fragment 不會送到伺服器 ⇒ GitHub 的日誌與 CDN 看不到憑證，Referer 也被剝掉
+     · base64url 字母表沒有 `&` ⇒ 不會被工單系統的 `&amp;` 轉義弄壞
+     · `z1.` 是編碼版本，不是內容版本
+
+   🔴 **安全鐵則：一律用 textContent 建 DOM，永不 innerHTML。**
+      承載裡有「平台商回應的原文」—— 那是**外部來源**的字串。
+      用 innerHTML 等於把第三方回應當成 HTML 執行（XSS）。
+      連粗體也是用 DOM 切出 <strong>，不走 innerHTML。
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+var PREFIX = 'z1.';
+
+/* 任何「參數沒帶／壞掉／解不開」一律 403，不給提示（初始說明 §3）。
+   ★ 診斷刻意放在**產生端**：tracewager.py 產生網址時會印
+     「對方若看到 403，九成是網址被截斷」。頁面這裡只留 console，不上畫面。 */
+function deny(why) {
+  if (why) { try { console.warn('[AG] ' + why); } catch (e) {} }
+  document.getElementById('deny').style.display = 'block';
+  document.getElementById('app').className = 'hide';
+  document.title = '403 Forbidden';
+}
+
+function b64urlToBytes(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) { s += '='; }
+  var bin = atob(s);
+  var out = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) { out[i] = bin.charCodeAt(i); }
+  return out;
+}
+
+async function gunzip(bytes) {
+  if (typeof DecompressionStream !== 'function') {
+    throw new Error('DecompressionStream 不支援（需要較新的瀏覽器）');
+  }
+  var ds = new DecompressionStream('gzip');
+  var stream = new Blob([bytes]).stream().pipeThrough(ds);
+  return await new Response(stream).text();
+}
+
+/* ── DOM 小工具（全部 textContent）────────────────────────────────────────── */
+function el(tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) { n.className = cls; }
+  if (text !== undefined && text !== null) { n.textContent = String(text); }
+  return n;
+}
+
+/* `**粗體**` → <strong>。刻意只支援這一種標記，而且**用 DOM 切**不用 innerHTML。
+   承載裡的中文說明大量使用 `**…**` 來標重點，那是這份報告判讀的一部分。 */
+function rich(node, text) {
+  var parts = String(text === null || text === undefined ? '' : text).split('**');
+  for (var i = 0; i < parts.length; i++) {
+    if (parts[i] === '') { continue; }
+    node.appendChild(i % 2 ? el('strong', null, parts[i])
+                           : document.createTextNode(parts[i]));
+  }
+  return node;
+}
+
+function tone(t) {
+  return (t === 'ok' || t === 'warn' || t === 'danger' || t === 'info') ? t : 'info';
+}
+
+/* 可收合的區塊外殼 */
+function sect(title, collapsed) {
+  var s = el('section');
+  if (title) {
+    var h = el('h2');
+    h.appendChild(el('span', 'chev', collapsed ? '▸' : '▾'));
+    rich(h.appendChild(el('span')), title);
+    h.addEventListener('click', function () {
+      var c = s.classList.toggle('col');
+      h.firstChild.textContent = c ? '▸' : '▾';
+    });
+    s.appendChild(h);
+    if (collapsed) { s.classList.add('col'); }
+  } else {
+    s.classList.add('flat');
+  }
+  s.appendChild(el('div', 'body'));
+  return s;
+}
+
+function addNote(box, text, cls) {
+  if (!text) { return; }
+  rich(box.appendChild(el('div', cls || 'note')), text);
+}
+
+/* ── 六種區塊型別 ─────────────────────────────────────────────────────────── */
+function rBanner(b) {
+  var d = el('div', 'banner ' + tone(b.tone));
+  rich(d, b.text);
+  return d;
+}
+
+function rKv(b) {
+  var s = sect(b.title, false), box = s.lastChild;
+  addNote(box, b.note);
+  var dl = box.appendChild(el('dl'));
+  (b.rows || []).forEach(function (r) {
+    rich(dl.appendChild(el('dt')), r[0]);
+    rich(dl.appendChild(el('dd')), r[1]);
+  });
+  return s;
+}
+
+function rTable(b) {
+  var s = sect(b.title, false), box = s.lastChild;
+  addNote(box, b.note);
+  var wrap = box.appendChild(el('div', 'tw'));
+  var t = wrap.appendChild(el('table'));
+  if (b.head && b.head.length) {
+    var tr = t.appendChild(el('thead')).appendChild(el('tr'));
+    b.head.forEach(function (h) { tr.appendChild(el('th', null, h)); });
+  }
+  var tb = t.appendChild(el('tbody'));
+  (b.rows || []).forEach(function (r) {
+    var tr = tb.appendChild(el('tr'));
+    (r || []).forEach(function (c) { rich(tr.appendChild(el('td')), c); });
+  });
+  return s;
+}
+
+function rList(b) {
+  var s = sect(b.title, false), box = s.lastChild;
+  addNote(box, b.note);
+  var ul = box.appendChild(el('ul', 'pl'));
+  (b.items || []).forEach(function (it) { rich(ul.appendChild(el('li')), it); });
+  if (b.tone && b.tone !== 'info') { s.firstChild.classList.add(tone(b.tone)); }
+  return s;
+}
+
+function rCode(b) {
+  var s = sect(b.title, false), box = s.lastChild;
+  addNote(box, b.note);
+  box.appendChild(el('pre', null, b.text));
+  return s;
+}
+
+/* request / response 的一半 */
+function half(box, legend, side) {
+  if (!side) { return; }
+  box.appendChild(el('div', 'leg', legend));
+  if (side.line) { box.appendChild(el('div', 'line', side.line)); }
+  if (side.headers && side.headers.length) {
+    var wrap = box.appendChild(el('div', 'tw'));
+    var tb = wrap.appendChild(el('table')).appendChild(el('tbody'));
+    side.headers.forEach(function (h) {
+      var tr = tb.appendChild(el('tr'));
+      tr.appendChild(el('th', null, h[0]));
+      tr.appendChild(el('td', null, h[1]));
+    });
+  }
+  /* ★ `headers_note` 不可省略渲染：它回答「標頭空白是誰的問題」——
+       沒有它，讀者會以為我方把憑證藏起來了（計畫書 §0 硬規則③）。 */
+  addNote(box, side.headers_note);
+  if (side.body !== undefined && side.body !== null && side.body !== '') {
+    box.appendChild(el('pre', null, side.body));
+  }
+}
+
+function rExchange(b) {
+  var s = sect(b.title, false), box = s.lastChild;
+  if (b.tone && b.tone !== 'info') { s.firstChild.classList.add(tone(b.tone)); }
+  /* ★★ `warning` 一律顯示、而且擺最上面。
+       它是「這一段其實不是平台回的」那種會讓人開錯工單的事實。 */
+  addNote(box, b.warning, 'warnbox');
+  addNote(box, b.note);
+  if (b.meta && b.meta.length) {
+    var dl = box.appendChild(el('dl'));
+    b.meta.forEach(function (r) {
+      rich(dl.appendChild(el('dt')), r[0]);
+      rich(dl.appendChild(el('dd')), r[1]);
+    });
+  }
+  (b.items || []).forEach(function (it) {
+    var c = box.appendChild(el('div', 'ex ' + tone(it.tone)));
+    var h = c.appendChild(el('div', 'exh'));
+    h.appendChild(el('span', 'chev', '▾'));
+    h.appendChild(el('span', null, it.label || ''));
+    h.addEventListener('click', function () {
+      var col = c.classList.toggle('col');
+      h.firstChild.textContent = col ? '▸' : '▾';
+    });
+    var eb = c.appendChild(el('div', 'exb'));
+    half(eb, 'request', it.req);
+    half(eb, 'response', it.resp);
+    /* ★ `notes` 含「已遮蔽的欄位」與「這條 URL 本身帶著憑證」—— 兩者都不可省略 */
+    if (it.notes && it.notes.length) {
+      var ul = eb.appendChild(el('ul', 'pl'));
+      ul.style.marginTop = '10px';
+      it.notes.forEach(function (n) { rich(ul.appendChild(el('li')), n); });
+    }
+  });
+  return s;
+}
+
+/* ★ catch-all：承載裡出現頁面不認得的區塊型別時**原樣攤開**，絕不靜默丟掉。
+     計畫書 §5-3：mission_PG 與 AgWager 都踩過「沒人顯示的欄位等於不存在，
+     而且不會報錯」。這個分支就是那個坑的守門。 */
+function rUnknown(b) {
+  var d = el('div', 'unknown');
+  d.appendChild(el('b', null, '未知區塊型別：' + (b && b.type ? b.type : '(無)')));
+  d.appendChild(el('pre', null, JSON.stringify(b, null, 1)));
+  return d;
+}
+
+var RENDER = {banner: rBanner, kv: rKv, table: rTable, list: rList,
+              exchange: rExchange, code: rCode};
+
+/* ── 主流程 ───────────────────────────────────────────────────────────────── */
+function render(p) {
+  if (!p || typeof p !== 'object' || !Array.isArray(p.blocks)) {
+    return deny('承載形狀不對（沒有 blocks 陣列）');
+  }
+  document.getElementById('t').textContent = p.title || 'AG Report';
+  document.getElementById('st').textContent = p.subtitle || '';
+  document.title = (p.title || 'AG Report') + (p.subtitle ? ' · ' + p.subtitle : '');
+
+  var bd = document.getElementById('bd');
+  (p.badges || []).forEach(function (b) {
+    var n = bd.appendChild(el('span', 'badge ' + tone(b.tone)));
+    n.appendChild(el('b', null, (b.label || '') + '：'));
+    n.appendChild(document.createTextNode(String(b.value === undefined ? '' : b.value)));
+  });
+
+  var m = document.getElementById('m');
+  p.blocks.forEach(function (b) {
+    var fn = (b && RENDER[b.type]) || rUnknown;
+    try {
+      m.appendChild(fn(b));
+    } catch (e) {
+      m.appendChild(rUnknown(b));       /* 單一區塊壞掉不可讓整頁空白 */
+      try { console.warn('[AG] 區塊渲染失敗', e); } catch (e2) {}
+    }
+  });
+
+  /* 頁尾：承載自己報的體積。★ `over_budget` 一定要看得到（硬規則②）——
+     被截斷的細節已由產生端做成一個區塊，這裡只補總量。 */
+  var ft = document.getElementById('ft');
+  var bits = [];
+  if (p.tool) { bits.push('來源：' + p.tool); }
+  if (p.mode) { bits.push('模式：' + p.mode); }
+  if (p.size_chars) { bits.push('承載 ' + p.size_chars + ' 字'); }
+  if (p.over_budget) { bits.push('⚠️ 已達長度上限（內容有省略）'); }
+  if (p.v) { bits.push('schema v' + p.v); }
+  ft.textContent = bits.join('　·　');
+
+  document.getElementById('app').className = '';
+  document.getElementById('deny').style.display = 'none';
+}
+
+/* 過濾：只留命中的區塊（並把它撐開）。純前端，不改承載。 */
+function applyFilter(q) {
+  q = (q || '').trim().toLowerCase();
+  var secs = document.querySelectorAll('#m > section, #m > .banner, #m > .unknown');
+  for (var i = 0; i < secs.length; i++) {
+    var s = secs[i];
+    var hit = !q || (s.textContent || '').toLowerCase().indexOf(q) >= 0;
+    s.classList.toggle('hide', !hit);
+    if (q && hit) { s.classList.remove('col'); }
+  }
+}
+
+function boot() {
+  document.getElementById('th').addEventListener('click', function () {
+    var cur = document.documentElement.getAttribute('data-theme');
+    var next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { localStorage.setItem('ag-theme', next); } catch (e) {}
+  });
+  try {
+    var saved = localStorage.getItem('ag-theme');
+    if (saved) { document.documentElement.setAttribute('data-theme', saved); }
+  } catch (e) {}
+  document.getElementById('q').addEventListener('input', function (ev) {
+    applyFilter(ev.target.value);
+  });
+  document.getElementById('xa').addEventListener('click', function () {
+    document.querySelectorAll('#m .col').forEach(function (n) {
+      n.classList.remove('col');
+      var c = n.querySelector('.chev');
+      if (c) { c.textContent = '▾'; }
+    });
+  });
+  document.getElementById('xc').addEventListener('click', function () {
+    document.querySelectorAll('#m > section:not(.flat), #m .ex').forEach(function (n) {
+      n.classList.add('col');
+      var c = n.querySelector('.chev');
+      if (c) { c.textContent = '▸'; }
+    });
+  });
+
+  var frag = String(location.hash || '').replace(/^#/, '');
+  if (!frag) { return deny('沒有 hash 參數'); }
+  if (frag.slice(0, PREFIX.length) !== PREFIX) { return deny('編碼前綴不符'); }
+  var enc = frag.slice(PREFIX.length);
+  if (!/^[A-Za-z0-9_-]+$/.test(enc)) { return deny('承載含非 base64url 字元'); }
+
+  gunzip(b64urlToBytes(enc))
+    .then(function (txt) { render(JSON.parse(txt)); })
+    .catch(function (e) { deny('解碼失敗：' + (e && e.message ? e.message : e)); });
+}
+
+window.addEventListener('hashchange', function () { location.reload(); });
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot);
+} else { boot(); }
+</script>
+</body>
+</html>
