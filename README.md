@@ -23,25 +23,59 @@
 
 ---
 
-## 怎麼用（目前只支援 `tracewager`）
+## 怎麼用（兩支工具，參數完全一致）
 
 ```bash
 cd ../elk_find
-python tracewager.py <wagerId> <env> --share-url remote      # ⭐ 產一條線上網址
-python tracewager.py <wagerId> <env> --share-url local       # 產本機鏡像網址（開發用）
+# 注單
+python tracewager.py  <wagerId> <env> --share-url remote      # ⭐ 產一條線上網址
+# 啟動遊戲（2026-10-02 上線）
+python tracelaunch.py '<launch-url>'  --share-url remote      # ★網址務必單引號包住
+python tracelaunch.py --token <userToken> <env> --share-url remote
+
+python tracewager.py <wagerId> <env> --share-url local        # 本機鏡像（開發用）
 python tracewager.py <wagerId> <env> --share-url remote 2>/dev/null | tail -1   # 只取網址
-python tracewager.py <wagerId> <env> --share-json            # 只要承載 JSON，不要網址
+python tracewager.py <wagerId> <env> --share-json             # 只要承載 JSON，不要網址
 ```
 
 | 參數 | 作用 |
 |---|---|
 | `--share-url remote\|local` | 輸出網址（隱含 `--share-json`） |
+| `--share-url-max N` | ⭐ **網址**字元上限（預設 4000；**`0`＝不限**） |
+| `--share-budget N` | 承載字元上限（預設 16000）。網址模式下只是**起點** |
 | `--share-secrets` | 憑證改**原文**（預設遮成 `頭4****尾4(len=N)`） |
-| `--share-budget N` | 承載字元上限（預設 16000）。調小 ⇒ 網址變短，省略項會列在頁尾 |
-| `--share-packets N` | 「我方 ↔ 平台商」最多收幾組交互（預設 4，**失敗的優先**） |
+| `--share-packets N` | 平台那一跳最多收幾組交互（預設 4，**失敗的優先**） |
+| `--share-all-headers` | 連 CDN／helmet／Envoy 樣板標頭也顯示 |
 
-> 🔴 **既有輸出零影響**：沒帶 `--share-*` 時 `tracewager.py` 一個字都不變
-> （實測帶與不帶 `--share-json`，文字段 24,394 bytes 逐位元組相同）。
+⭐ **最划算的一個設定：`--share-url-max 0`。**
+實測 launch 一案：**多 28% 的字元換到 3.4 倍的證據**
+（裁到 4,608 字只省 22% 網址長度；不裁是 14,426 字、網址 5,916）。
+⇒ 收件通道容得下 ~6,000 字（郵件／工單／程式碼區塊）時一律用 `0`；
+預設的裁減是為了塞進 Slack／Teams 的單則訊息（4,000 上限）。
+
+🔴 **不要用字元預算去推算網址長度 —— 數學上做不到。**
+實測 `網址字元 ÷ 承載字元` 落在 **0.55 ~ 1.02 倍**（裁得越兇壓縮率越差：
+被裁掉的正是最好壓的 ASCII 重複鍵名，留下的是最難壓的中文結論）。
+⇒ `--share-url` 走**外層迴圈**：真的編一次、量網址、不夠短就把預算往下調重裁；
+**壓不到就明說**，不為達標去砍「平台最後一組」那個底線。
+
+> 🔴 **既有輸出零影響**：沒帶 `--share-*` 時兩支工具一個字都不變。
+> `tracewager` 實測帶與不帶 `--share-json`，文字段 24,394 bytes 逐位元組相同；
+> `tracelaunch` 更強 —— 它只有**一個** emit 呼叫點而且在 `finally` 裡
+> （`_run_body()` 有 8 個出口，每個 return 各寫一次的話，以後加第 9 個就會漏），
+> 由 `../elk_find/ut_launch.py` L11-g 用 AST 證明，含負向證明。
+
+### 兩支工具的承載差在哪
+
+| | `tracewager` | `tracelaunch` |
+|---|---|---|
+| 第一個區塊 | banner（摘要） | ⭐ **「可直接回覆客戶／平台商的說法」** |
+| `mode` | `full`／降級路徑 | `full` ／ **`early`**（五個早退出口，**沒有封包區塊**） |
+| 核心證據 | 跳 3 的完整 header+body | 同左 ＋ **跳 2 的 `/v2/game/url`**（它的 response body 就是我方回出去的網址，任何長度上限下都保留） |
+| 主鍵 | wagerId（非機密） | ⚠️ **userToken（就是憑證本身）** ⇒ 遮蔽的要求嚴格得多 |
+
+⚠️ `early` 模式**沒有封包區塊是正確的**（那一族本來就不必查日誌），
+所以它會多一個 banner 明講「**這不是資料缺漏**」。少了那句就會被讀成資料不全。
 
 ---
 
@@ -137,13 +171,24 @@ python ut_pages.py --no-node    # 略過需要 node 的執行面
 |---|---|
 | **A** | 靜態不變量：單檔／零外部資源／**不含 `<a>`**／只有一個 `<script>`／深淺色都定義 |
 | **B** | ★**契約句不可從頁面消失** —— `warning`／`headers_note`／`notes`／`over_budget`／catch-all／403。刪掉任何一句，畫面會變好看，而讀者會開始下錯結論 |
-| **C** | 渲染覆蓋率：承載用到的每個型別頁面都要認得 ＋ catch-all 真的會攤開 |
+| **C** | 渲染覆蓋率：**兩份樣本**（wager＋launch）用到的每個型別頁面都要認得 ＋ catch-all 真的會攤開 |
+| **C-2** | ★**工具端真的會產出的型別**都要在頁面裡 —— 直接掃 `../elk_find/` **整個目錄**的原碼，不看合成樣本 |
 | **D** | 編碼往返：payload → gzip → base64url → 解回來逐欄相同 |
 | **E** | ★安全：會執行的碼不含 `innerHTML`／`eval`／`document.write`；XSS 樣本渲染後仍是純文字 |
 | **F** | 決定性：同一份 payload 編兩次**完全相同**（`gzip(mtime=0)`） |
 
 ★ **[B/C/E] 另有 node 執行面**：真的跑一次頁面的 `render()`，確認那幾句話**真的出現在畫面上**
 （不是只檢查原碼裡有這個字串）。⚠️ 沒有 node 時整段跳過並明講 —— **不要把 SKIP 當通過**。
+★ **node 執行面跑兩份承載**：wager 的 `full` ＋ launch 的 `early`。
+後者**沒有 exchange 區塊**，而頁面有好幾段邏輯（篩選器、展開／收合、頁尾）都是圍著
+exchange 寫的 ⇒ 只用 wager 樣本跑的話，「沒有封包的那一頁長什麼樣」從來沒被執行過。
+
+> 🔴 **2026-10-02 的教訓：[C-2] 軸差點被一次重構默默削弱。**
+> share 的通用層從 `tracewager.py` 搬到 `elk_base.py` 之後，
+> `exchange`／`table` 的 `_sh_blk` 呼叫跟著搬走 ⇒ 本軸看到的型別從 **5 個掉到 3 個**，
+> **而且它沒有紅** —— 只是印了一句當時已經不成立的「exchange／table 為第二階段預留」。
+> ⇒⇒ **掃原碼的守門，掃描範圍本身就是它的覆蓋面。**
+> 範圍寫死成單一檔案時，任何重構都會悄悄縮小它，而它只會變得更綠。
 
 已掛進 `../run_regression.sh` 第 1 段。
 

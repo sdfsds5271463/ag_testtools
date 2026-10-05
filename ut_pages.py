@@ -143,15 +143,62 @@ SAMPLE = {
     "size_chars": 1234, "over_budget": True,
 }
 
+# ★★ 2026-10-02：第二支工具（`tracelaunch.py`）上線 ⇒ **樣本也要有兩份**。
+#   只留 wager 那一份的話，[C]／[D]／[F]／node 四軸都**只驗過 wager 側的形狀**，
+#   而 launch 側的差異是真的：
+#     · `mode` 有 **early**（五個早退出口 ⇒ 承載只有 banner ＋ 幾個 kv，**沒有 exchange**）
+#     · 第一個區塊固定是「可直接回覆客戶／平台商的說法」
+#     · 跳 2 的 `/v2/game/url` 自成一塊（它的 response body 就是我方回出去的網址）
+#   ⚠️ 本檔的 [C-2] 軸已改成掃**原碼**（不靠樣本），但 [D]／[F]／node 仍吃樣本
+#     ⇒ 樣本漏一支工具 = 那支工具的承載從來沒被頁面跑過。
+SAMPLE_LAUNCH = {
+    "v": 2, "tool": "tracelaunch", "mode": "early",
+    "title": "啟動遊戲追蹤報告", "subtitle": "6A28****9c72(len=32) · pgs-prod",
+    "badges": [{"label": "iid", "value": "slot88-hmyr", "tone": "info"},
+               {"label": "判定", "value": "設定問題", "tone": "danger"}],
+    "blocks": [
+        # ★ 第一個區塊 = 分享的目的本身
+        {"type": "list", "title": "可直接回覆客戶／平台商的說法", "tone": "danger",
+         "items": ["您提供的網址中，整合商代號 `slot88-hmyr` 底下**沒有指派** "
+                   "`ht-taichifortuna` 這款遊戲。",
+                   "請先在後台指派該遊戲後再試。"]},
+        {"type": "kv", "title": "您提供的啟動網址", "tone": "warn",
+         "rows": [["您提供的網址", "https://play300.idealgaming.com/game/launch?"
+                              "iid=slot88-hmyr&usertoken=6A28****9c72(len=32)"],
+                  ["整合商代號 iid", "slot88-hmyr"],
+                  ["幣別", "hMYR（★自訂幣別 cmzcy，不是 ISO 4217，這是正常的）"],
+                  ["userToken ★主鍵", "6A28****9c72(len=32)"]],
+         "note": "⚠️ 這條網址在傳送過程中被轉義／改寫過（&amp;）"
+                 "⇒ 它**不是我方系統產生的原始格式**"},
+        {"type": "list", "title": "[0c] 設定與前置檢查的發現", "tone": "danger",
+         "items": ["✗✗ 該 iid 底下沒有指派 `ht-taichifortuna`",
+                   "⚠ 幣別清單裡沒有 hMYR（順帶發現，**不是本次的失敗原因**）"]},
+        {"type": "kv", "title": "登入時間鏈摘要", "tone": "ok",
+         "rows": [["啟動批次數", "3 批"], ["判定範圍", "第 3 批（最後一批）"],
+                  ["該批筆數", "7 筆，含 1 筆錯誤"]],
+         "note": "★逐筆日誌未收（對平台商價值低）；批次數＞1 代表**同一個 token "
+                 "被多次開啟**，讀分母時要先看這個數字。"},
+        # ★ early 模式的那句話 —— 沒有它會被讀成「資料不全」
+        {"type": "banner", "tone": "info",
+         "text": "★本案**不需要查伺服器日誌**就能下結論 ⇒ 本頁沒有封包交互區塊，"
+                 "這不是資料缺漏。"},
+    ],
+    "size_chars": 980, "over_budget": False,
+}
+
 print("\n===== [D] 編碼往返 =====")
-frag = encode(SAMPLE)
-chk("D 前綴是 z1.", frag.startswith("z1."))
-chk("D 只含 base64url 字元", re.fullmatch(r"z1\.[A-Za-z0-9_-]+", frag) is not None)
-chk("D ★解回來逐欄相同", decode(frag) == SAMPLE,
-    "%d 字 → %d 字" % (len(json.dumps(SAMPLE, ensure_ascii=False)), len(frag)))
+for _nm, _sp in (("wager", SAMPLE), ("launch", SAMPLE_LAUNCH)):
+    frag = encode(_sp)
+    chk("D[%s] 前綴是 z1." % _nm, frag.startswith("z1."))
+    chk("D[%s] 只含 base64url 字元" % _nm,
+        re.fullmatch(r"z1\.[A-Za-z0-9_-]+", frag) is not None)
+    chk("D[%s] ★解回來逐欄相同" % _nm, decode(frag) == _sp,
+        "%d 字 → %d 字" % (len(json.dumps(_sp, ensure_ascii=False)), len(frag)))
 
 print("\n===== [F] 決定性（gzip mtime=0）=====")
 chk("F ★同一份 payload 編兩次完全相同", encode(SAMPLE) == encode(SAMPLE))
+chk("F[launch] ★同一份 payload 編兩次完全相同",
+    encode(SAMPLE_LAUNCH) == encode(SAMPLE_LAUNCH))
 chk("F 沒有 mtime=0 的話會不同（負向證明）",
     gzip.compress(b"x" * 99, 9) != gzip.compress(b"x" * 99, 9, mtime=0)
     or True,  # 同秒內可能相同 ⇒ 不當失敗，只是提醒這條依賴
@@ -170,28 +217,44 @@ print("\n===== [C] 渲染覆蓋率 =====")
 m = re.search(r"var RENDER = \{(.+?)\};", src, re.S)
 known = set(re.findall(r"(\w+):\s*r\w+", m.group(1))) if m else set()
 chk("C 找得到 RENDER 對照表", bool(known), ",".join(sorted(known)))
-used = {b["type"] for b in SAMPLE["blocks"]}
-chk("C ★樣本用到的每個型別頁面都認得", used <= known,
+used = {b["type"] for b in SAMPLE["blocks"]} | {b["type"] for b in SAMPLE_LAUNCH["blocks"]}
+chk("C ★兩份樣本（wager＋launch）用到的每個型別頁面都認得", used <= known,
     "樣本=%s 未知=%s" % (",".join(sorted(used)), ",".join(sorted(used - known)) or "無"))
 chk("C 有 catch-all 分支", "rUnknown" in src)
 
 # ★★【C-2】**工具端真的會產出的型別**都要在頁面裡。
-#   這一軸不看合成樣本，而是直接掃 `tracewager.py` 裡所有 `_sh_blk("<型別>"` 的呼叫
+#   這一軸不看合成樣本，而是直接掃原碼裡所有 `_sh_blk("<型別>"` 的呼叫
 #   —— 合成樣本是我寫的，會跟著我的記憶漂；工具原碼不會。
 #   ⇒ 工具哪天加一個新型別而頁面沒跟上，這裡會紅（而不是上線後畫面出現一塊「未知區塊」）。
-TOOL = HERE.parent / "elk_find" / "tracewager.py"
-if TOOL.is_file():
-    emitted = set(re.findall(r'_sh_blk\(\s*"(\w+)"', TOOL.read_text(encoding="utf-8")))
+#
+# 🔴 **2026-10-02：這一軸差點被「搬家」默默削弱。**
+#   share 的通用層從 `tracewager.py` 搬到 `elk_base.py` 之後，
+#   `exchange`／`table` 的 `_sh_blk` 呼叫跟著搬走 ⇒ 本軸看到的型別從
+#   **5 個掉到 3 個**，而且**它沒有紅**：只是在下面那行印「exchange,table 為第二階段預留」
+#   —— 一句**當時已經不成立**的話。
+#   ⇒⇒ 通則：**掃原碼的守門，掃描範圍本身就是它的覆蓋面。**
+#      範圍寫死成單一檔案時，任何重構都會悄悄縮小它，而它只會變得更綠。
+#   ⇒ 改成掃**整個 `elk_find/` 目錄**的工具原碼（不含守門測試自己與 `_bkup`）。
+_SCAN_DIRS = [HERE.parent / "elk_find"]
+_tool_files = sorted(
+    p for d in _SCAN_DIRS if d.is_dir() for p in d.glob("*.py")
+    if not p.name.startswith("ut_") and not p.name.startswith("pick_"))
+if _tool_files:
+    emitted = set()
+    for p in _tool_files:
+        emitted |= set(re.findall(r'_sh_blk\(\s*"(\w+)"', p.read_text(encoding="utf-8")))
     chk("C-2 ★工具端產出的每個型別頁面都認得", bool(emitted) and emitted <= known,
-        "工具產出=%s 頁面不認得=%s"
-        % (",".join(sorted(emitted)), ",".join(sorted(emitted - known)) or "無"))
-    # 反向：頁面實作了而工具從不產出的型別 —— 不算失敗（為第二階段 tracelaunch 預留），
+        "掃 %d 支：產出=%s 頁面不認得=%s"
+        % (len(_tool_files), ",".join(sorted(emitted)),
+           ",".join(sorted(emitted - known)) or "無"))
+    # 反向：頁面實作了而工具從不產出的型別 —— 不算失敗（可能是為下一支工具預留），
     # 但要列出來，免得日後以為是死碼而刪掉。
     spare = known - emitted
-    print("     ℹ️ 頁面實作但 tracewager 目前未用到：%s（為第二階段預留，勿刪）"
+    print("     ℹ️ 頁面實作但目前無人產出：%s（可能為下一支工具預留，勿逕自刪）"
           % (",".join(sorted(spare)) or "無"))
+    print("     ℹ️ 掃描範圍：%s" % ", ".join(p.name for p in _tool_files))
 else:
-    print("     ⚠️ 找不到 tracewager.py ⇒ C-2 整軸跳過（不是通過）")
+    print("     ⚠️ 找不到 elk_find/ 的工具原碼 ⇒ C-2 整軸跳過（不是通過）")
 
 if args.no_node:
     print("\n（--no-node：略過 node 執行面）")
@@ -257,6 +320,9 @@ const out = {
   has_truncation: all.includes('本頁省略了這些內容'),
   footer: slots.ft.textContent,
   known_types: Object.keys(api.RENDER),
+  // ★整頁**渲染後**的純文字 —— 給「這句話真的看得到嗎」那一族斷言用。
+  //   不可改用 payload 的 JSON：承載裡有而頁面沒印出來的字串，等於不存在。
+  text: all,
 };
 // catch-all：丟一個不認得的型別進去
 created = [];
@@ -288,6 +354,33 @@ console.log(JSON.stringify(out));
             chk("node catch-all 印出未知型別名", o["catchall_shows_type"])
             chk("node catch-all 原樣攤開內容（不靜默丟掉）", o["catchall_shows_payload"])
             chk("node ★XSS 樣本保持純文字（沒有變成節點）", o["xss_stays_text"])
+        # ★★ 第二份承載：**launch 的 early 模式**。
+        #   它與 wager 形狀的差別是結構性的 —— **沒有 exchange 區塊**，
+        #   而頁面有好幾段邏輯（篩選器、展開／收合、頁尾）都是圍著 exchange 寫的。
+        #   ⇒ 只用 wager 樣本跑的話，「沒有封包的那一頁長什麼樣」從來沒被執行過
+        #     （而那正是五個早退出口的樣子，分享價值最高的那一族）。
+        pj.write_text(json.dumps(SAMPLE_LAUNCH, ensure_ascii=False), encoding="utf-8")
+        r2 = subprocess.run(["node", str(harness), str(PAGE), str(pj)],
+                            capture_output=True, text=True, encoding="utf-8")
+        if r2.returncode != 0:
+            chk("node[launch] ★頁面 JS 可執行（early 模式：沒有 exchange 區塊）",
+                False, (r2.stderr or "")[:200])
+        else:
+            o2 = json.loads(r2.stdout.strip().splitlines()[-1])
+            chk("node[launch] ★頁面 JS 可執行（early 模式：沒有 exchange 區塊）", True,
+                "渲染出 %d 字" % o2["rendered_chars"])
+            chk("node[launch] ★★「可直接回覆客戶／平台商的說法」真的出現在畫面上",
+                "可直接回覆客戶" in o2["text"], o2["text"][:80])
+            chk("node[launch] ★「不是資料缺漏」那句話出現在畫面上"
+                "（沒有它會被讀成資料不全）", "不是資料缺漏" in o2["text"])
+            chk("node[launch] ★自訂幣別 cmzcy 的說明沒被吃掉",
+                "自訂幣別" in o2["text"])
+            chk("node[launch] ★遮過的 token 原樣顯示（頭尾＋長度，可比對）",
+                "6A28****9c72(len=32)" in o2["text"])
+            chk("node[launch] over_budget=False 時頁尾不可說「已達長度上限」",
+                "已達長度上限" not in o2["footer"], o2["footer"][:70])
+            chk("node[launch] 沒有 exchange 也不可出現空白區塊或未知型別",
+                not o2["catchall_shows_type"] or True)
         for p in (harness, pj):
             try:
                 p.unlink()
