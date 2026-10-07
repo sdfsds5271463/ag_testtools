@@ -186,8 +186,50 @@ SAMPLE_LAUNCH = {
     "size_chars": 980, "over_budget": False,
 }
 
+# ★★ 2026-10-07：第三份承載 —— **轉帳錢包的 wager**（`tracewager` 2026-10-07 版）。
+#   起因：一張真實轉帳單的分享頁，唯一一組封包是平台打進來的查詢（還被標成我方內部跳），
+#   而那張單自己的事件與交易**一個字都沒有**。新版承載多了三樣頁面從沒跑過的形狀：
+#     · `交易明細` table —— 被裁過時中間有一列 `…`（省略數要對原始筆數算）
+#     · 「我方 → 平台商：沒有金流封包（轉帳錢包）」—— **零筆 exchange ＋ warning**
+#     · 「外部主動查詢」exchange —— 不是金流，標題不可帶「內部跳：」
+#   ⇒ 頁面一行沒改（全是既有型別），但「這幾句真的看得到」要由執行面證明。
+#   🔴 本 repo 是**公開**的 ⇒ 樣本一律用合成值（單號／交易編號／IP 都是假的；IP 用 RFC 5737 文件段）。
+SAMPLE_TRANSFER = {
+    "v": 2, "tool": "tracewager", "mode": "full",
+    "title": "注單追蹤報告", "subtitle": "00000000-0000-4000-8000-000000000001 · env",
+    "badges": [{"label": "判定", "value": "符合預期", "tone": "ok"},
+               {"label": "錢包", "value": "transfer", "tone": "info"}],
+    "blocks": [
+        {"type": "kv", "title": "注單生命週期（這張單自己的事件）",
+         "rows": [["事件流（39 個）", "WagerCreate → WagerBet → …（中間省略 30 個事件）… → WagerConfirm"],
+                  ["與 Summary 對照", "WagerWin 合計 355887.5 ＝ 贏分（Summary）✓"]],
+         "note": "★贏分是**延後派**：每一筆 WagerWin 只記帳，**WagerConfirm 那一刻才一次入帳**。"},
+        {"type": "table", "title": "交易明細（共 33 筆交易，依發生順序）",
+         "head": ["#", "時間", "transactionId", "事件", "金額", "錢包動作"],
+         "rows": [["1", "01-01 00:00:05", "SyntheticTid0000000001", "WagerCreate → WagerBet",
+                   "Bet 50", "扣"],
+                  ["…", "（中間省略 28 列：長度上限）", "", "", "", ""],
+                  ["33", "01-01 00:01:05", "SyntheticTid0000000033",
+                   "WagerWin → WagerNoteCustomTag → WagerConfirm", "Win 10000", "延後派、派彩落地"]]},
+        {"type": "exchange", "title": "★我方 → 平台商：本單沒有金流封包（轉帳錢包）",
+         "tone": "warn",
+         "warning": "轉帳錢包的扣款與派彩都記在**我方內部帳本**，不呼叫平台錢包 "
+                    "⇒ 本來就沒有 request/response（不是漏抓）。過程看「交易明細」。",
+         "meta": [["跳", "3"], ["總筆數", "0"]], "items": []},
+        {"type": "exchange", "title": "外部主動查詢：平台（或其後台）→ 我方 apiproxy（非金流，共 2 份）",
+         "tone": "info",
+         "note": "這是平台用注單編號**打進來查詢**的 API（`/v2/game/history`×2）",
+         "items": [{"label": "第 1 組 · 01-01 00:06:53", "tone": "ok",
+                    "req": {"line": "POST /v2/game/history",
+                            "headers": [["x-forwarded-for", "203.0.113.7, 10.0.0.1"]],
+                            "body": "{\"wagerId\":\"00000000\"}"},
+                    "resp": {"line": "HTTP 200", "body": "{\"url\":\"https://x/detail\"}"}}]},
+    ],
+    "size_chars": 3823, "over_budget": False,
+}
+
 print("\n===== [D] 編碼往返 =====")
-for _nm, _sp in (("wager", SAMPLE), ("launch", SAMPLE_LAUNCH)):
+for _nm, _sp in (("wager", SAMPLE), ("launch", SAMPLE_LAUNCH), ("transfer", SAMPLE_TRANSFER)):
     frag = encode(_sp)
     chk("D[%s] 前綴是 z1." % _nm, frag.startswith("z1."))
     chk("D[%s] 只含 base64url 字元" % _nm,
@@ -217,8 +259,9 @@ print("\n===== [C] 渲染覆蓋率 =====")
 m = re.search(r"var RENDER = \{(.+?)\};", src, re.S)
 known = set(re.findall(r"(\w+):\s*r\w+", m.group(1))) if m else set()
 chk("C 找得到 RENDER 對照表", bool(known), ",".join(sorted(known)))
-used = {b["type"] for b in SAMPLE["blocks"]} | {b["type"] for b in SAMPLE_LAUNCH["blocks"]}
-chk("C ★兩份樣本（wager＋launch）用到的每個型別頁面都認得", used <= known,
+used = ({b["type"] for b in SAMPLE["blocks"]} | {b["type"] for b in SAMPLE_LAUNCH["blocks"]}
+        | {b["type"] for b in SAMPLE_TRANSFER["blocks"]})
+chk("C ★三份樣本（wager＋launch＋transfer）用到的每個型別頁面都認得", used <= known,
     "樣本=%s 未知=%s" % (",".join(sorted(used)), ",".join(sorted(used - known)) or "無"))
 chk("C 有 catch-all 分支", "rUnknown" in src)
 
@@ -381,6 +424,26 @@ console.log(JSON.stringify(out));
                 "已達長度上限" not in o2["footer"], o2["footer"][:70])
             chk("node[launch] 沒有 exchange 也不可出現空白區塊或未知型別",
                 not o2["catchall_shows_type"] or True)
+        # ★★ 第三份承載：轉帳錢包 wager（2026-10-07）—— 交易明細／零筆 exchange／外部查詢
+        pj.write_text(json.dumps(SAMPLE_TRANSFER, ensure_ascii=False), encoding="utf-8")
+        r3 = subprocess.run(["node", str(harness), str(PAGE), str(pj)],
+                            capture_output=True, text=True, encoding="utf-8")
+        if r3.returncode != 0:
+            chk("node[transfer] ★頁面 JS 可執行（轉帳單：交易明細＋零筆 exchange）",
+                False, (r3.stderr or "")[:200])
+        else:
+            o3 = json.loads(r3.stdout.strip().splitlines()[-1])
+            chk("node[transfer] ★頁面 JS 可執行（轉帳單：交易明細＋零筆 exchange）", True,
+                "渲染出 %d 字" % o3["rendered_chars"])
+            chk("node[transfer] ★★交易明細的 transactionId 真的出現在畫面上",
+                "SyntheticTid0000000001" in o3["text"] and "SyntheticTid0000000033" in o3["text"])
+            chk("node[transfer] ★裁過的表：「中間省略 N 列」那一列沒被吃掉"
+                "（少了它讀者會以為交易就這麼多筆）", "中間省略 28 列" in o3["text"])
+            chk("node[transfer] ★零筆 exchange 的 warning 照印（空白會被讀成「沒送出去」）",
+                "不是漏抓" in o3["text"])
+            chk("node[transfer] 「延後派」語意說明出現在畫面上", "延後派" in o3["text"])
+            chk("node[transfer] ★外部主動查詢的標題不可帶「內部跳：」",
+                "外部主動查詢" in o3["text"] and "內部跳：" not in o3["text"])
         for p in (harness, pj):
             try:
                 p.unlink()
